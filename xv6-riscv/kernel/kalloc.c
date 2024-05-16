@@ -80,3 +80,13 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+int
+kpages(void)
+{
+  struct run *r;
+  uint64 free = 0;
+  for(r = kmem.freelist; r; r=r->next)
+    free += PGSIZE; // TODO modify to account for page size
+  return free;
+}
