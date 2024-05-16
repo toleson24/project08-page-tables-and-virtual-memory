@@ -687,3 +687,13 @@ procdump(void)
     printf("\n");
   }
 }
+
+int
+smem(char *addr, int n)
+{
+  if(/*((addr % PGSIZE) != 0) && */((n % PGSIZE) != 0)){
+    return -1;
+  }
+  // TODO
+  return 0;
+}
