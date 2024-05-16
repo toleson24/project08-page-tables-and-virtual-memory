@@ -691,8 +691,16 @@ procdump(void)
 int
 smem(char *addr, int n)
 {
+  char *page;
   if(/*((addr % PGSIZE) != 0) && */((n % PGSIZE) != 0)){
     return -1;
+  }
+  n /= PGSIZE;
+  for(int i = 0; i < n; i++){  
+    if((page = kalloc()) == 0){
+      return -1;
+    }
+    // TODO mappages
   }
   // TODO
   return 0;
