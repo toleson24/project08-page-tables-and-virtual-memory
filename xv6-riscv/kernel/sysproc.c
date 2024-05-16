@@ -91,16 +91,26 @@ sys_uptime(void)
 }
 
 uint64
-sys_kpages(void) {
+sys_kpages(void)
+{
   return (uint64) kpages();
 }
 
 uint64
-sys_udirs(void) {
+sys_udirs(void)
+{
   struct proc *mp = myproc();
   return (uint64) udirs(mp->pagetable);
 }
 
-uint64 sys_kdirs(void) {
+uint64
+sys_kdirs(void)
+{
   return (uint64) kdirs();
+}
+
+uint64
+smem(void) {
+  // TODO
+  return smem(0x40000000, 4096);
 }
