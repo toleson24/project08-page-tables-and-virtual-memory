@@ -81,12 +81,12 @@ kalloc(void)
   return (void*)r;
 }
 
-int
+uint64
 kpages(void)
 {
   struct run *r;
   uint64 free = 0;
   for(r = kmem.freelist; r; r=r->next)
-    free += PGSIZE; // TODO modify to account for page size
+    free += PGSIZE / 4094; 
   return free;
 }
