@@ -691,17 +691,23 @@ procdump(void)
 int
 smem(char *addr, int n)
 {
-  char *page;
-  if(/*((addr % PGSIZE) != 0) && */((n % PGSIZE) != 0)){
+  if(((uint)addr % PGSIZE != 0) || (n % PGSIZE != 0))
+    return -1;
+  
+  char *mem = kalloc();
+  if(mem == 0)
+    return -1;
+
+  memset(mem, 0, n);
+  int r = mappages(myproc()->pgdir, (void *)addr, n, V2P(mem), (PTE_W|PTE_U));
+  if(r < 0){
+    kfree(mem);
     return -1;
   }
-  n /= PGSIZE;
-  for(int i = 0; i < n; i++){  
-    if((page = kalloc()) == 0){
-      return -1;
-    }
-    // TODO mappages
-  }
-  // TODO
+
+  myproc()->shared_mem = addr;
+  myproc()->shared_mem_size = n;
+  myproc()->shared_mem_owner = myproc()->pid;
+
   return 0;
 }
