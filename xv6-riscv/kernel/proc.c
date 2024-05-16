@@ -168,7 +168,7 @@ freeproc(struct proc *p)
   if(p->shared_mem){
     if (p->pid == p->shared_mem_owner)
       kfree(p->shared_mem);
-    uvmunmap(p->pgdir, (void *)p->shared_mem, p->shared_mem_size, 1);
+    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 1);
   }
   p->pid = 0;
   p->parent = 0;
@@ -303,6 +303,10 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+
+  if(p->shared_mem){
+    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, V2P(p->shared_mem), (PTE_W|PTE_U));
+  }
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -699,7 +703,7 @@ procdump(void)
 int
 smem(char *addr, int n)
 {
-  if(((uint)addr % PGSIZE != 0) || (n % PGSIZE != 0))
+  if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
     return -1;
   
   char *mem = kalloc();
@@ -708,7 +712,7 @@ smem(char *addr, int n)
 
   struct proc *mp = myproc();
   memset(mem, 0, n);
-  int r = mappages(mp->pgdir, (void *)addr, n, V2P(mem), (PTE_W|PTE_U));
+  int r = mappages(mp->pagetable, (uint64)addr, n, V2P(mem), (PTE_W|PTE_U));
   if(r < 0){
     kfree(mem);
     return -1;
