@@ -700,22 +700,119 @@ procdump(void)
   }
 }
 
+/*
+  int
+  smem(char *addr, int n)
+  {
+    if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
+      return -1;
+
+    // struct proc *mp = myproc();
+    // char *smem;
+    // int npages = n / PGSIZE;
+    // for(int i =0; i < npages; i++){
+    //   smem[i] = kalloc();
+    //   if(smem[i] == 0){
+    //     for(int j = 0; j < i; j++){
+    //       kfree(smem[j]);
+    //     }
+    //     return -1;
+    //   }
+    //   memset(smem[i], 0, npages);
+    //   int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)smem, (PTE_W|PTE_U));
+    //   if(r < 0){
+    //       for(int j = 0; j < i; j++){
+    //       kfree(smem[j]);
+    //     }
+    //     return -1;
+    //   }
+    // }
+
+    // struct proc *mp = myproc();
+    // int npages = n / PGSIZE;
+    // char *mem[npages], *page;
+    // int r;
+    // for(int i = 0; i < npages; i++) {
+    //   page = kalloc();
+    //   if(page == 0)
+    //     return -1;
+
+    //   mem[i * PGSIZE] = page;
+    // }
+    // memset(mem, 0, npages);
+    // r = mappages(mp->pagetable, (uint64)addr, npages, (uint64)mem, (PTE_W|PTE_U));
+    // if(r < 0){
+    //   kfree(mem);
+    //   return -1;
+    // }
+
+    struct proc *mp = myproc();
+    int npages = n / PGSIZE;
+    char* mem[npages];
+
+    for (int i = 0; i < npages; i++) {
+      mem[i] = kalloc();
+      if (mem[i] == 0) {
+        kfree(mem[i]);
+        return -1;
+      }
+      memset(mem[i], 0, PGSIZE);
+    }
+
+    int r;
+    for (int i = 0; i < npages; i++) {
+      r = mappages(mp->pagetable, (uint64)(addr + i * PGSIZE), PGSIZE, (uint64)mem[i], PTE_W|PTE_U);
+      if (r < 0) {
+        kfree(mem[i]);
+        return -1;
+      }
+    }
+
+    // char *mem = kalloc();
+    // if(mem == 0)
+    //   return -1;
+
+    // struct proc *mp = myproc();
+    // memset(mem, 0, n);
+    // int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)mem, (PTE_W|PTE_U));
+    // if(r < 0){
+    //   kfree(mem);
+    //   return -1;
+    // }
+
+    mp->shared_mem = addr;
+    mp->shared_mem_size = n;
+    mp->shared_mem_owner = mp->pid;
+
+    return 0;
+  }
+*/
+
+
 int
 smem(char *addr, int n)
 {
+  // if(n == 0){
+  //   panic()
+  // }
   if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
     return -1;
-  
-  char *mem = kalloc();
-  if(mem == 0)
-    return -1;
 
+  uint flags;
+  char *mem;
   struct proc *mp = myproc();
-  memset(mem, 0, n);
-  int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)mem, (PTE_W|PTE_U));
-  if(r < 0){
-    kfree(mem);
-    return -1;
+  for (int i = 0; i < n; i += PGSIZE) {
+    if((mem = kalloc()) == 0)
+      return -1;
+    memset(mem, 0, n);
+    // printf("smem: after memset n=%d, i=%d, addr=%p\n", n, i, addr);
+    flags = PTE_R|PTE_W|PTE_U;
+    if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
+      // printf("smem: memset if\n");
+      kfree(mem);
+      return -1;
+    }
+    // printf("smem: after memset if \n");
   }
 
   mp->shared_mem = addr;
