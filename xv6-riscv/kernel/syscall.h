@@ -23,3 +23,4 @@
 #define SYS_kpages 22
 #define SYS_udirs  23
 #define SYS_kdirs  24
+#define SYS_smem   25
