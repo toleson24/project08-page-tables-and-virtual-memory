@@ -90,16 +90,17 @@ sys_uptime(void)
   return xticks;
 }
 
-int
+uint64
 sys_kpages(void) {
   return (uint64) kpages();
 }
 
-int
+uint64
 sys_udirs(void) {
-  return (uint64) udirs();  // TODO get & pass pagetable
+  struct proc *mp = myproc();
+  return (uint64) udirs(mp->pagetable);
 }
 
-int sys_kdirs(void) {
-  return (uint64) kdirs();  // TODO get & pass pagetable
+uint64 sys_kdirs(void) {
+  return (uint64) kdirs();
 }
