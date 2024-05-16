@@ -104,6 +104,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_kpages(void);
 extern uint64 sys_udirs(void);
 extern uint64 sys_kdirs(void);
+extern uint64 sys_smem(void);
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -132,6 +133,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_kpages]  sys_kpages,
 [SYS_udirs]   sys_udirs,
 [SYS_kdirs]   sys_kdirs,
+[SYS_smem]    sys_smem,
 };
 
 void
