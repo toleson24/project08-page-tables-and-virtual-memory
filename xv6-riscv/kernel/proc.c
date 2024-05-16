@@ -698,16 +698,17 @@ smem(char *addr, int n)
   if(mem == 0)
     return -1;
 
+  struct proc *mp = myproc();
   memset(mem, 0, n);
-  int r = mappages(myproc()->pgdir, (void *)addr, n, V2P(mem), (PTE_W|PTE_U));
+  int r = mappages(mp->pgdir, (void *)addr, n, V2P(mem), (PTE_W|PTE_U));
   if(r < 0){
     kfree(mem);
     return -1;
   }
 
-  myproc()->shared_mem = addr;
-  myproc()->shared_mem_size = n;
-  myproc()->shared_mem_owner = myproc()->pid;
+  mp->shared_mem = addr;
+  mp->shared_mem_size = n;
+  mp->shared_mem_owner = mp->pid;
 
   return 0;
 }
