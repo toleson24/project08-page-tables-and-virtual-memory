@@ -110,7 +110,7 @@ sys_kdirs(void)
 }
 
 uint64
-smem(void) {
+sys_smem(void) {
   // TODO
-  return smem(0x40000000, 4096);
+  return smem((char *) 0x40000000, 4096);
 }
