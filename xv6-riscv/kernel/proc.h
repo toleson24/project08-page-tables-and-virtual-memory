@@ -94,6 +94,9 @@ struct proc {
 
   // wait_lock must be held when using this:
   struct proc *parent;         // Parent process
+  char *shared_mem;            // Memory shared with the parent process
+  int shared_mem_size;         // Number of pages in shared memory
+  int shared_mem_owner;        // Process ID of shared memory's original owner
 
   // these are private to the process, so p->lock need not be held.
   uint64 kstack;               // Virtual address of kernel stack
