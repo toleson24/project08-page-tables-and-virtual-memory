@@ -165,6 +165,11 @@ freeproc(struct proc *p)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
+  if(p->shared_mem){
+    if (p->pid == p->shared_mem_owner)
+      kfree(p->shared_mem);
+    uvmunmap(p->pgdir, (void *)p->shared_mem, p->shared_mem_size, 1);
+  }
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
