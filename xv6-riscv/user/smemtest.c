@@ -44,6 +44,7 @@ smemtest(int n)
 
   // Create shared memory region at VA 1GB
   r = smem(smem_addr, smem_size);
+  // printf("after smem call %d\n", r);
   if(r < 0){
     printf("smem(%p, %d) failed\n", smem_addr, smem_size);
     exit(-1);
@@ -51,7 +52,10 @@ smemtest(int n)
 
   // Initialize shared memory region to all 'a's
   memset(smem_addr, smem_start_char, smem_size);
+  // printf("after memset call\n");
   memcheck_print("parent_pre", smem_addr, smem_start_char, smem_size);
+
+  // exit(0);  // TODO remove
 
    // Fork a child, which should inherit the shared region
   id = fork();
