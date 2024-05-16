@@ -90,7 +90,7 @@ sys_uptime(void)
   return xticks;
 }
 
-uint64
+int
 sys_kpages(void) {
   return (uint64) kpages();
 }
