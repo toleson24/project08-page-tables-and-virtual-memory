@@ -39,3 +39,4 @@ entry("uptime");
 entry("kpages");
 entry("udirs");
 entry("kdirs");
+entry("smem");
