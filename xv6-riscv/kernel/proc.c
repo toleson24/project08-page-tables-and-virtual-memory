@@ -305,7 +305,7 @@ fork(void)
   np->sz = p->sz;
 
   if(p->shared_mem){
-    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, V2P(p->shared_mem), (PTE_W|PTE_U));
+    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_W|PTE_U));
   }
 
   // copy saved user registers.
@@ -712,7 +712,7 @@ smem(char *addr, int n)
 
   struct proc *mp = myproc();
   memset(mem, 0, n);
-  int r = mappages(mp->pagetable, (uint64)addr, n, V2P(mem), (PTE_W|PTE_U));
+  int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)mem, (PTE_W|PTE_U));
   if(r < 0){
     kfree(mem);
     return -1;
