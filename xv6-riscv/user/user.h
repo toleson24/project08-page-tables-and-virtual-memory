@@ -25,7 +25,7 @@ int uptime(void);
 int kpages(void);
 int udirs(void);
 int kdirs(void);
-int smem(void);
+int smem(char *, int);
 
 // ulib.c
 int stat(const char*, struct stat*);
