@@ -305,7 +305,7 @@ fork(void)
   np->sz = p->sz;
 
   if(p->shared_mem){
-    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_W|PTE_U));
+    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U));
   }
 
   // copy saved user registers.
@@ -792,9 +792,8 @@ procdump(void)
 int
 smem(char *addr, int n)
 {
-  // if(n == 0){
-  //   panic()
-  // }
+  if(n <= 0)
+    return -1;
   if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
     return -1;
 
@@ -805,14 +804,11 @@ smem(char *addr, int n)
     if((mem = kalloc()) == 0)
       return -1;
     memset(mem, 0, n);
-    // printf("smem: after memset n=%d, i=%d, addr=%p\n", n, i, addr);
     flags = PTE_R|PTE_W|PTE_U;
     if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
-      // printf("smem: memset if\n");
       kfree(mem);
       return -1;
     }
-    // printf("smem: after memset if \n");
   }
 
   mp->shared_mem = addr;
