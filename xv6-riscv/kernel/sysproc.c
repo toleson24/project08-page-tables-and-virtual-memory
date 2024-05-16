@@ -94,3 +94,12 @@ int
 sys_kpages(void) {
   return (uint64) kpages();
 }
+
+int
+sys_udirs(void) {
+  return (uint64) udirs();  // TODO get & pass pagetable
+}
+
+int sys_kdirs(void) {
+  return (uint64) kdirs();  // TODO get & pass pagetable
+}
