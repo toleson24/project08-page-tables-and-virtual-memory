@@ -111,6 +111,10 @@ sys_kdirs(void)
 
 uint64
 sys_smem(void) {
-  // TODO
-  return smem((char *) 0x40000000, 4096);
+  char *addr;
+  int n;
+
+  argaddr(0, (uint64 *) &addr);
+  argint(1, &n);
+  return smem(addr, n); // (char *) 0x40000000, 4096
 }
