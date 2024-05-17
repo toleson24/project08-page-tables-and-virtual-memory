@@ -301,16 +301,12 @@ fork(void)
 
   if(p->smem_a){
     pte_t *pte;
-    uint64 pa, i;
-    uint flags;
-    for(i = 0; i < p->smem_sz; i += PGSIZE){
+    for(int i = 0; i < p->smem_sz; i += PGSIZE){
       if((pte = walk(p->pagetable, (uint64)p->smem_a + i, 0)) == 0)
         panic("fork: parent pte should exist");
       if((*pte & PTE_V) == 0)
         panic("fork: parent page not present");
-      pa = PTE2PA(*pte);
-      flags = PTE_FLAGS(*pte);
-      if(mappages(np->pagetable, (uint64)p->smem_a + i, PGSIZE, pa, flags) != 0){
+      if(mappages(np->pagetable, (uint64)p->smem_a + i, PGSIZE, PTE2PA(*pte), PTE_FLAGS(*pte)) != 0){
         freeproc(np);
         release(&np->lock);
         return -1;
@@ -729,24 +725,20 @@ smem(char *addr, int n)
   if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
     return -1;
 
-  uint flags;
-  char *mem;
   struct proc *mp = myproc();
-
+  char *mem;
   for (int i = 0; i < n; i += PGSIZE) {
     if((mem = kalloc()) == 0)
       return -1;
     memset(mem, 0, PGSIZE);
-    flags = PTE_W|PTE_U|PTE_X|PTE_R;
-    if(mappages(mp->pagetable, (uint64)addr + i, PGSIZE, (uint64)mem, flags) != 0){
+    if(mappages(mp->pagetable, (uint64)addr + i, PGSIZE, (uint64)mem, PTE_W|PTE_U|PTE_X|PTE_R) != 0){
       kfree(mem);
       return -1;
     }
   }
-
   mp->smem_a = addr;
   mp->smem_sz = n;
   mp->smem_o = mp->pid;
-
+  
   return 0;
 }
