@@ -170,6 +170,9 @@ freeproc(struct proc *p)
       kfree(p->shared_mem);
     uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 1);
   }
+  p->shared_mem = (char *)0;
+  p->shared_mem_size = 0;
+  p->shared_mem_owner = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -296,6 +299,11 @@ fork(void)
     return -1;
   }
 
+  // printf("fork: parent pid=%d\n", p->pid);
+  // printf("fork: parent smem_addr=%p\n", p->shared_mem);
+  // printf("fork: parent smem_size=%d\n", p->shared_mem_size);
+  // printf("fork: parent smem_owner=%d\n", p->shared_mem_owner);
+
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
     freeproc(np);
@@ -305,8 +313,71 @@ fork(void)
   np->sz = p->sz;
 
   if(p->shared_mem){
-    mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U));
+    char *mem;
+    for(int i = 0; i < p->shared_mem_size; i += PGSIZE){
+      if((mem = kalloc()) == 0)
+        return -1;
+      // printf("fork: page allocated mem=%p\n", mem);
+      if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)mem, (PTE_R|PTE_W|PTE_U)) != 0){
+        kfree(mem);
+        return -1;
+      }
+      np->shared_mem_size = p->shared_mem_size;
+      np->shared_mem_owner = p->shared_mem_owner;
+    }
   }
+
+  // printf("fork: child pid=%d\n", np->pid);
+  // printf("fork: child smem_addr=%p\n", np->shared_mem);
+  // printf("fork: child smem_size=%d\n", np->shared_mem_size);
+  // printf("fork: child smem_owner=%d\n", np->shared_mem_owner);
+
+  // if(p->shared_mem){
+  //   mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U));
+  // }
+
+  /*
+    if(p->shared_mem){
+      np->shared_mem = p->shared_mem;
+      np->shared_mem_size = p->shared_mem_size;
+      np->shared_mem_owner = p->shared_mem_owner;
+    }
+  */
+
+  /*
+    if(p->shared_mem){
+      // printf("fork: smem mapping addr=%p sz=%d\n", p->shared_mem, p->shared_mem_size);
+      if(mappages(np->pagetable, (uint64)p->shared_mem, PGSIZE, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U)) != 0){
+        // printf("fork: smem map failed nmem=%p\n", p->shared_mem);
+        kfree(p->shared_mem);
+        return -1;
+      }
+      // printf("fork: smem map complete\n");
+    }
+  */
+
+  /*
+    char *mem;
+    if(p->shared_mem){
+      // printf("fork: child smem map\n");
+      for (int i = 0; i < p->shared_mem_size; i += PGSIZE) {
+        if((mem = kalloc()) == 0)
+          return -1;
+        // printf("fork: page allocated\n");
+        memset(mem, 0, PGSIZE);
+        // printf("forf: page mem zeroed\n");
+        // printf("fork: page mapping p->shared_mem=%p\n", p->shared_mem);
+        if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)mem, (PTE_R|PTE_W|PTE_U)) != 0){
+        // if(mappages(np->pagetable, (uint64)mem, PGSIZE, (uint64)p->shared_mem + i, (PTE_R|PTE_W|PTE_U)) != 0){
+          // printf("fork: page map err, addr=%p\n", p->shared_mem + i);
+          kfree(mem);
+          return -1;
+        }
+        // printf("fork: page mapped\n");
+      }
+      // printf("fork: smem mapped\n");
+    }
+  */
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -803,7 +874,7 @@ smem(char *addr, int n)
   for (int i = 0; i < n; i += PGSIZE) {
     if((mem = kalloc()) == 0)
       return -1;
-    memset(mem, 0, n);
+    memset(mem, 0, PGSIZE);
     flags = PTE_R|PTE_W|PTE_U;
     if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
       kfree(mem);
@@ -811,9 +882,16 @@ smem(char *addr, int n)
     }
   }
 
+  acquire(&pid_lock);
   mp->shared_mem = addr;
-  mp->shared_mem_size = n;
-  mp->shared_mem_owner = mp->pid;
+  mp->shared_mem_size = n; // / PGSIZE;
+  mp->shared_mem_owner = mp->pid;  // parent->pid;
+  release(&pid_lock);
+
+  // printf("smem: parent pid=%d\n", mp->pid);
+  // printf("smem: parent smem_addr=%p\n", mp->shared_mem);
+  // printf("smem: parent smem_size=%d\n", mp->shared_mem_size);
+  // printf("smem: parent smem_owner=%d\n", mp->shared_mem_owner);
 
   return 0;
 }
