@@ -313,18 +313,24 @@ fork(void)
   np->sz = p->sz;
 
   if(p->shared_mem){
-    char *mem;
+    np->shared_mem = p->shared_mem;
+    pte_t *pte;
+    uint64 pa;
+    uint flags;
     for(int i = 0; i < p->shared_mem_size; i += PGSIZE){
-      if((mem = kalloc()) == 0)
-        return -1;
-      // printf("fork: page allocated mem=%p\n", mem);
-      if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)mem, (PTE_R|PTE_W|PTE_U)) != 0){
-        kfree(mem);
+      if((pte = walk(p->pagetable, i, 0)) == 0)
+        panic("fork: parent pte should exist");
+      if((*pte & PTE_V) == 0)
+        panic("fork: parent page not present");
+      pa = PTE2PA(*pte);
+      flags = PTE_FLAGS(*pte);
+      if(mappages(np->pagetable, (uint64)(np->shared_mem + i), PGSIZE, (uint64)pa, flags) != 0){
+        uvmunmap(np->pagetable, 0, np->shared_mem_size, 0);
         return -1;
       }
-      np->shared_mem_size = p->shared_mem_size;
-      np->shared_mem_owner = p->shared_mem_owner;
     }
+    np->shared_mem_size = p->shared_mem_size;
+    np->shared_mem_owner = p->shared_mem_owner;
   }
 
   // printf("fork: child pid=%d\n", np->pid);
