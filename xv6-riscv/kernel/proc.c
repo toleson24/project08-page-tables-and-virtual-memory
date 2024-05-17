@@ -127,6 +127,7 @@ found:
   p->shared_mem = (char *)0;
   p->shared_mem_size = 0;
   p->shared_mem_owner = 0;
+  p->shared_mem_refcount = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -161,18 +162,21 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  if (p->pid == p->shared_mem_owner){
+    printf("freeproc: unmap parent\n");
+    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 1);
+  } else {
+    printf("freeproc: unmap child\n");
+    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 0);
+  }
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
-  if(p->shared_mem){
-    if (p->pid == p->shared_mem_owner)
-      kfree(p->shared_mem);
-    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 1);
-  }
   p->shared_mem = (char *)0;
   p->shared_mem_size = 0;
   p->shared_mem_owner = 0;
+  p->shared_mem_refcount = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -316,14 +320,18 @@ fork(void)
     pte_t *pte;
     uint64 pa, i;
     uint flags;
-    for(i = (uint64)p->shared_mem; i < (uint64)(p->shared_mem + p->shared_mem_size); i += PGSIZE){
-      if((pte = walk(p->pagetable, i, 0)) == 0)
+    for(i = 0; i < p->shared_mem_size; i += PGSIZE){
+      if((pte = walk(p->pagetable, (uint64)p->shared_mem + i, 0)) == 0)
         panic("fork: parent pte should exist");
       if((*pte & PTE_V) == 0)
         panic("fork: parent page not present");
       pa = PTE2PA(*pte);
       flags = PTE_FLAGS(*pte);
-      if(mappages(np->pagetable, (uint64)i, PGSIZE, (uint64)pa, flags) != 0){
+      if(pa == 0){
+        freeproc(np);
+        return -1;
+      }
+      if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)pa, flags) != 0){
         // uvmunmap(np->pagetable, (uint64)np->shared_mem, PGSIZE, 0);
         return -1;
       }
@@ -331,6 +339,7 @@ fork(void)
     np->shared_mem = p->shared_mem;
     np->shared_mem_size = p->shared_mem_size;
     np->shared_mem_owner = p->shared_mem_owner;
+    np->shared_mem_refcount = p->shared_mem_refcount + 1;
   }
 
   // printf("fork: child pid=%d\n", np->pid);
@@ -364,6 +373,7 @@ fork(void)
   np->state = RUNNABLE;
   release(&np->lock);
 
+  // printf("exiting fork\n");
   return pid;
 }
 
@@ -830,22 +840,27 @@ smem(char *addr, int n)
   uint flags;
   char *mem;
   struct proc *mp = myproc();
+
+  acquire(&pid_lock);
+
   for (int i = 0; i < n; i += PGSIZE) {
     if((mem = kalloc()) == 0)
       goto err;  // return -1;
     memset(mem, 0, PGSIZE);
     flags = PTE_R|PTE_W|PTE_U;
     if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
+      printf("smem: mappages failed\n");
       // kfree(mem);
       // return -1;
       goto err;
     }
   }
 
-  acquire(&pid_lock);
   mp->shared_mem = addr;
   mp->shared_mem_size = n; // / PGSIZE;
   mp->shared_mem_owner = mp->pid;  // parent->pid;
+  if(mp->shared_mem_refcount == 0)
+    mp->shared_mem_refcount = 1;
   release(&pid_lock);
 
   // printf("smem: parent pid=%d\n", mp->pid);
@@ -856,6 +871,8 @@ smem(char *addr, int n)
   return 0;
 
   err:
+    printf("smem: error\n");
     uvmunmap(mp->pagetable, (uint64)addr, n / PGSIZE, 1);
+    release(&pid_lock);
     return -1;
 }
