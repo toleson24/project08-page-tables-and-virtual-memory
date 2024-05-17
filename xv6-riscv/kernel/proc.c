@@ -163,11 +163,11 @@ freeproc(struct proc *p)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
   if (p->pid == p->shared_mem_owner){
-    printf("freeproc: unmap parent\n");
-    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 1);
+    // printf("freeproc: unmap parent\n");
+    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 1);
   } else {
-    printf("freeproc: unmap child\n");
-    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size, 0);
+    // printf("freeproc: unmap child\n");
+    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 0);
   }
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
@@ -332,7 +332,7 @@ fork(void)
         return -1;
       }
       if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)pa, flags) != 0){
-        // uvmunmap(np->pagetable, (uint64)np->shared_mem, PGSIZE, 0);
+        freeproc(np);
         return -1;
       }
     }
@@ -849,7 +849,7 @@ smem(char *addr, int n)
     memset(mem, 0, PGSIZE);
     flags = PTE_R|PTE_W|PTE_U;
     if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
-      printf("smem: mappages failed\n");
+      // printf("smem: mappages failed\n");
       // kfree(mem);
       // return -1;
       goto err;
@@ -871,8 +871,9 @@ smem(char *addr, int n)
   return 0;
 
   err:
-    printf("smem: error\n");
-    uvmunmap(mp->pagetable, (uint64)addr, n / PGSIZE, 1);
+    // printf("smem: error\n");
+    // uvmunmap(mp->pagetable, (uint64)addr, n / PGSIZE, 1);
+    freeproc(mp);
     release(&pid_lock);
     return -1;
 }
