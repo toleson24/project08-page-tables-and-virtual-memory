@@ -9,7 +9,7 @@ memcheck(char *addr, int c, int n)
 
   for(int i = 0; i < n; i++){
     if(addr[i] != c){
-      printf("memcheck: addr[%d]=%d\n", i, addr[i]);  // TODO remove
+      printf("memcheck: a=%d, addr[%d]=%d\n", c, i, addr[i]);  // TODO remove
       match = 0;
       break;
     }
@@ -45,18 +45,19 @@ smemtest(int n)
   printf("smemtest n=%d, smem_size=%d\n", n, smem_size);  // TODO remove
 
   // Create shared memory region at VA 1GB
-  // printf("before smem\n");  // TODO remove
+  printf("before smem\n");  // TODO remove
   r = smem(smem_addr, smem_size);
-  // printf("after smem r=%d\n", r);  // TODO remove
+  printf("after smem r=%d\n", r);  // TODO remove
   if(r < 0){
     printf("smem(%p, %d) failed\n", smem_addr, smem_size);
     exit(-1);
   }
 
   // Initialize shared memory region to all 'a's
-  // printf("before memset\n", r);  // TODO remove
+  printf("before memset\n", r);  // TODO remove
+  printf("memset(%p, %c, %d)\n", smem_addr, smem_start_char, smem_size);  // TODO remove
   memset(smem_addr, smem_start_char, smem_size);
-  // printf("after memset\n", r);  // TODO remove
+  printf("after memset\n", r);  // TODO remove
   memcheck_print("parent_pre", smem_addr, smem_start_char, smem_size);
 
   // Fork a child, which should inherit the shared region
@@ -71,12 +72,14 @@ smemtest(int n)
     printf("after child memset\n");  // TODO remove
     memcheck_print("child_post", smem_addr, smem_end_char, smem_size);
 
+    printf("child exiting\n");
     exit(0);
   }
   // printf("parent waiting\n");
 
   // In parent
   wait(0);
+  printf("parent running\n");
 
   memcheck_print("parent_post", smem_addr, smem_end_char, smem_size);
 }
