@@ -313,22 +313,22 @@ fork(void)
   np->sz = p->sz;
 
   if(p->shared_mem){
-    np->shared_mem = p->shared_mem;
     pte_t *pte;
-    uint64 pa;
+    uint64 pa, i;
     uint flags;
-    for(int i = 0; i < p->shared_mem_size; i += PGSIZE){
+    for(i = (uint64)p->shared_mem; i < (uint64)(p->shared_mem + p->shared_mem_size); i += PGSIZE){
       if((pte = walk(p->pagetable, i, 0)) == 0)
         panic("fork: parent pte should exist");
       if((*pte & PTE_V) == 0)
         panic("fork: parent page not present");
       pa = PTE2PA(*pte);
       flags = PTE_FLAGS(*pte);
-      if(mappages(np->pagetable, (uint64)(np->shared_mem + i), PGSIZE, (uint64)pa, flags) != 0){
-        uvmunmap(np->pagetable, 0, np->shared_mem_size, 0);
+      if(mappages(np->pagetable, (uint64)i, PGSIZE, (uint64)pa, flags) != 0){
+        // uvmunmap(np->pagetable, (uint64)np->shared_mem, PGSIZE, 0);
         return -1;
       }
     }
+    np->shared_mem = p->shared_mem;
     np->shared_mem_size = p->shared_mem_size;
     np->shared_mem_owner = p->shared_mem_owner;
   }
@@ -337,53 +337,6 @@ fork(void)
   // printf("fork: child smem_addr=%p\n", np->shared_mem);
   // printf("fork: child smem_size=%d\n", np->shared_mem_size);
   // printf("fork: child smem_owner=%d\n", np->shared_mem_owner);
-
-  // if(p->shared_mem){
-  //   mappages(np->pagetable, (uint64)p->shared_mem, p->shared_mem_size, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U));
-  // }
-
-  /*
-    if(p->shared_mem){
-      np->shared_mem = p->shared_mem;
-      np->shared_mem_size = p->shared_mem_size;
-      np->shared_mem_owner = p->shared_mem_owner;
-    }
-  */
-
-  /*
-    if(p->shared_mem){
-      // printf("fork: smem mapping addr=%p sz=%d\n", p->shared_mem, p->shared_mem_size);
-      if(mappages(np->pagetable, (uint64)p->shared_mem, PGSIZE, (uint64)p->shared_mem, (PTE_R|PTE_W|PTE_U)) != 0){
-        // printf("fork: smem map failed nmem=%p\n", p->shared_mem);
-        kfree(p->shared_mem);
-        return -1;
-      }
-      // printf("fork: smem map complete\n");
-    }
-  */
-
-  /*
-    char *mem;
-    if(p->shared_mem){
-      // printf("fork: child smem map\n");
-      for (int i = 0; i < p->shared_mem_size; i += PGSIZE) {
-        if((mem = kalloc()) == 0)
-          return -1;
-        // printf("fork: page allocated\n");
-        memset(mem, 0, PGSIZE);
-        // printf("forf: page mem zeroed\n");
-        // printf("fork: page mapping p->shared_mem=%p\n", p->shared_mem);
-        if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, (uint64)mem, (PTE_R|PTE_W|PTE_U)) != 0){
-        // if(mappages(np->pagetable, (uint64)mem, PGSIZE, (uint64)p->shared_mem + i, (PTE_R|PTE_W|PTE_U)) != 0){
-          // printf("fork: page map err, addr=%p\n", p->shared_mem + i);
-          kfree(mem);
-          return -1;
-        }
-        // printf("fork: page mapped\n");
-      }
-      // printf("fork: smem mapped\n");
-    }
-  */
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
@@ -879,12 +832,13 @@ smem(char *addr, int n)
   struct proc *mp = myproc();
   for (int i = 0; i < n; i += PGSIZE) {
     if((mem = kalloc()) == 0)
-      return -1;
+      goto err;  // return -1;
     memset(mem, 0, PGSIZE);
     flags = PTE_R|PTE_W|PTE_U;
     if(mappages(mp->pagetable, (uint64)(addr + i), PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
-      return -1;
+      // kfree(mem);
+      // return -1;
+      goto err;
     }
   }
 
@@ -900,4 +854,8 @@ smem(char *addr, int n)
   // printf("smem: parent smem_owner=%d\n", mp->shared_mem_owner);
 
   return 0;
+
+  err:
+    uvmunmap(mp->pagetable, (uint64)addr, n / PGSIZE, 1);
+    return -1;
 }
