@@ -1,7 +1,43 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-24ddc0f5d75046c5622901739e7c5dd533143b0c8e959d652212380cedb1ea36.svg)](https://classroom.github.com/a/JXTgUwc5)
 # Project08 Page Tables and Virtual Memory
 
-## About
+## Installation Instructions
+
+To compile and run xv6 you will need to install Qemu, RISC-V build tools, and gdb.
+
+### QEMU & RISC-V build tools
+
+See the MIT Instructions guide linked below.
+
+### gdb
+
+For gdb, you should use homebrew to install the RISC-V version:
+
+```bash
+brew install riscv64-elf-gdb
+```
+To run this version of gdb, type:
+
+```bash
+riscv64-elf-gdb
+```
+
+## Links
+
+### External Resources
+
+xv6 Homepage: https://pdos.csail.mit.edu/6.828/2023/xv6.html
+
+MIT Instructions for installation: https://pdos.csail.mit.edu/6.828/2023/tools.html  
+> Note: This guide contains instruction for both macOS and Ubuntu/Ubuntu in Windows WSL.
+
+RISC-V xv6 GitHub repo: https://github.com/mit-pdos/xv6-riscv
+
+### Project Resources
+
+Tests: https://github.com/USF-CS631-S24/tests/lab06 
+
+Autograder: https://github.com/phpeterson-usf/autograder
 
 ## Requirements
 
@@ -75,18 +111,12 @@ In this example, the child can write to the inherited shared memory region and u
 To get the `smem()` system call to work properly you will have to consider several issues:
 
 In `proc.c:smem()` you need to check if both `addr` and `n` are multiplies of 4096. Return -1 if not.
-In ``proc.c:smem()` you need to use `kalloc()` to allocate n / 4096 pages.
+In `proc.c:smem()` you need to use `kalloc()` to allocate n / 4096 pages.
 In `proc.c:smem()` you need to use `mappages()` to map the allocated kernel pages starting at user virtual address `addr`.
 Hint: look at `proc.c:growproc()` which calls `vm.c:uvmalloc()`. Understanding this code is key to understanding how to use `kalloc()` and `mappages()` in your `smem()` implementation.
 In `proc.c:smem()` you need to update the calling (parent) proc struct with `addr`, `n`, and also record the owning pid of the shared memory region (the owner is the caller of `smem()`).
 In `proc.c:fork()` you will need to properly inherit the shared memory region in the child. In this case you need to create mappings in the child’s page table that point to the kernel pages originally allocated for the shared memory region in the parent. Hint: look at `vm.c:uvmcopy()` for guidance on how to do this (note: `uvmcopy()` won’t work for this directly, why?).
 In `proc.c:freeproc()` you need to handle two cases if the proc has a shared memory region. If the proc is the owner of the region, then you need to unmap the shared memory region and deallocate the kernel pages. If the proc is not the owner, then you need to just unmap the shared memory region. You will need to understand how to use `vm:uvmunmap()`.
-
-## Links
-
-Tests: https://github.com/USF-CS631-S24/tests/lab06 
-
-Autograder: https://github.com/phpeterson-usf/autograder
 
 ## Testing
 
