@@ -124,10 +124,9 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-  p->shared_mem = (char *)0;
-  p->shared_mem_size = 0;
-  p->shared_mem_owner = 0;
-  p->shared_mem_refcount = 0;
+  p->smem_a = (char *)0;
+  p->smem_sz = 0;
+  p->smem_o = 0;
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -162,19 +161,18 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if (p->pid == p->shared_mem_owner){
-    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 1);
+  if (p->pid == p->smem_o){
+    uvmunmap(p->pagetable, (uint64)p->smem_a, p->smem_sz / PGSIZE, 1);
   } else {
-    uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 0);
+    uvmunmap(p->pagetable, (uint64)p->smem_a, p->smem_sz / PGSIZE, 0);
   }
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
   p->sz = 0;
-  p->shared_mem = (char *)0;
-  p->shared_mem_size = 0;
-  p->shared_mem_owner = 0;
-  p->shared_mem_refcount = 0;
+  p->smem_a = (char *)0;
+  p->smem_sz = 0;
+  p->smem_o = 0;
   p->pid = 0;
   p->parent = 0;
   p->name[0] = 0;
@@ -301,26 +299,26 @@ fork(void)
     return -1;
   }
 
-  if(p->shared_mem){
+  if(p->smem_a){
     pte_t *pte;
     uint64 pa, i;
     uint flags;
-    for(i = 0; i < p->shared_mem_size; i += PGSIZE){
-      if((pte = walk(p->pagetable, (uint64)p->shared_mem + i, 0)) == 0)
+    for(i = 0; i < p->smem_sz; i += PGSIZE){
+      if((pte = walk(p->pagetable, (uint64)p->smem_a + i, 0)) == 0)
         panic("fork: parent pte should exist");
       if((*pte & PTE_V) == 0)
         panic("fork: parent page not present");
       pa = PTE2PA(*pte);
       flags = PTE_FLAGS(*pte);
-      if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, pa, flags) != 0){
+      if(mappages(np->pagetable, (uint64)p->smem_a + i, PGSIZE, pa, flags) != 0){
         freeproc(np);
         release(&np->lock);
         return -1;
       }
     }
-    np->shared_mem = p->shared_mem;
-    np->shared_mem_size = p->shared_mem_size;
-    np->shared_mem_owner = p->shared_mem_owner;
+    np->smem_a = p->smem_a;
+    np->smem_sz = p->smem_sz;
+    np->smem_o = p->smem_o;
   }
 
   // Copy user memory from parent to child.
@@ -746,9 +744,9 @@ smem(char *addr, int n)
     }
   }
 
-  mp->shared_mem = addr;
-  mp->shared_mem_size = n;
-  mp->shared_mem_owner = mp->pid;
+  mp->smem_a = addr;
+  mp->smem_sz = n;
+  mp->smem_o = mp->pid;
 
   return 0;
 }
