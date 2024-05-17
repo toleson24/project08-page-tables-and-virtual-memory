@@ -163,10 +163,8 @@ freeproc(struct proc *p)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
   if (p->pid == p->shared_mem_owner){
-    // printf("freeproc: unmap parent\n");
     uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 1);
   } else {
-    // printf("freeproc: unmap child\n");
     uvmunmap(p->pagetable, (uint64)p->shared_mem, p->shared_mem_size / PGSIZE, 0);
   }
   if(p->pagetable)
@@ -303,11 +301,6 @@ fork(void)
     return -1;
   }
 
-  // printf("fork: parent pid=%d\n", p->pid);
-  // printf("fork: parent smem_addr=%p\n", p->shared_mem);
-  // printf("fork: parent smem_size=%d\n", p->shared_mem_size);
-  // printf("fork: parent smem_owner=%d\n", p->shared_mem_owner);
-
   if(p->shared_mem){
     pte_t *pte;
     uint64 pa, i;
@@ -319,10 +312,6 @@ fork(void)
         panic("fork: parent page not present");
       pa = PTE2PA(*pte);
       flags = PTE_FLAGS(*pte);
-      // if(pa == 0){
-      //   freeproc(np);
-      //   return -1;
-      // }
       if(mappages(np->pagetable, (uint64)p->shared_mem + i, PGSIZE, pa, flags) != 0){
         freeproc(np);
         release(&np->lock);
@@ -332,13 +321,7 @@ fork(void)
     np->shared_mem = p->shared_mem;
     np->shared_mem_size = p->shared_mem_size;
     np->shared_mem_owner = p->shared_mem_owner;
-    // np->shared_mem_refcount = p->shared_mem_refcount + 1;
   }
-
-  // printf("fork: child pid=%d\n", np->pid);
-  // printf("fork: child smem_addr=%p\n", np->shared_mem);
-  // printf("fork: child smem_size=%d\n", np->shared_mem_size);
-  // printf("fork: child smem_owner=%d\n", np->shared_mem_owner);
 
   // Copy user memory from parent to child.
   if(uvmcopy(p->pagetable, np->pagetable, p->sz) < 0){
@@ -374,7 +357,6 @@ fork(void)
   np->state = RUNNABLE;
   release(&np->lock);
 
-  // printf("exiting fork\n");
   return pid;
 }
 
@@ -741,95 +723,6 @@ procdump(void)
   }
 }
 
-/*
-  int
-  smem(char *addr, int n)
-  {
-    if(((uint64)addr % PGSIZE != 0) || (n % PGSIZE != 0))
-      return -1;
-
-    // struct proc *mp = myproc();
-    // char *smem;
-    // int npages = n / PGSIZE;
-    // for(int i =0; i < npages; i++){
-    //   smem[i] = kalloc();
-    //   if(smem[i] == 0){
-    //     for(int j = 0; j < i; j++){
-    //       kfree(smem[j]);
-    //     }
-    //     return -1;
-    //   }
-    //   memset(smem[i], 0, npages);
-    //   int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)smem, (PTE_W|PTE_U));
-    //   if(r < 0){
-    //       for(int j = 0; j < i; j++){
-    //       kfree(smem[j]);
-    //     }
-    //     return -1;
-    //   }
-    // }
-
-    // struct proc *mp = myproc();
-    // int npages = n / PGSIZE;
-    // char *mem[npages], *page;
-    // int r;
-    // for(int i = 0; i < npages; i++) {
-    //   page = kalloc();
-    //   if(page == 0)
-    //     return -1;
-
-    //   mem[i * PGSIZE] = page;
-    // }
-    // memset(mem, 0, npages);
-    // r = mappages(mp->pagetable, (uint64)addr, npages, (uint64)mem, (PTE_W|PTE_U));
-    // if(r < 0){
-    //   kfree(mem);
-    //   return -1;
-    // }
-
-    struct proc *mp = myproc();
-    int npages = n / PGSIZE;
-    char* mem[npages];
-
-    for (int i = 0; i < npages; i++) {
-      mem[i] = kalloc();
-      if (mem[i] == 0) {
-        kfree(mem[i]);
-        return -1;
-      }
-      memset(mem[i], 0, PGSIZE);
-    }
-
-    int r;
-    for (int i = 0; i < npages; i++) {
-      r = mappages(mp->pagetable, (uint64)(addr + i * PGSIZE), PGSIZE, (uint64)mem[i], PTE_W|PTE_U);
-      if (r < 0) {
-        kfree(mem[i]);
-        return -1;
-      }
-    }
-
-    // char *mem = kalloc();
-    // if(mem == 0)
-    //   return -1;
-
-    // struct proc *mp = myproc();
-    // memset(mem, 0, n);
-    // int r = mappages(mp->pagetable, (uint64)addr, n, (uint64)mem, (PTE_W|PTE_U));
-    // if(r < 0){
-    //   kfree(mem);
-    //   return -1;
-    // }
-
-    mp->shared_mem = addr;
-    mp->shared_mem_size = n;
-    mp->shared_mem_owner = mp->pid;
-
-    return 0;
-  }
-*/
-
-
 int
 smem(char *addr, int n)
 {
@@ -841,8 +734,6 @@ smem(char *addr, int n)
   uint flags;
   char *mem;
   struct proc *mp = myproc();
-
-  // printf("smem: pre\n");
 
   for (int i = 0; i < n; i += PGSIZE) {
     if((mem = kalloc()) == 0)
@@ -858,15 +749,6 @@ smem(char *addr, int n)
   mp->shared_mem = addr;
   mp->shared_mem_size = n;
   mp->shared_mem_owner = mp->pid;
-  // if(mp->shared_mem_refcount == 0)
-  //   mp->shared_mem_refcount = 1;
-
-  // printf("smem: parent pid=%d\n", mp->pid);
-  // printf("smem: parent smem_addr=%p\n", mp->shared_mem);
-  // printf("smem: parent smem_size=%d\n", mp->shared_mem_size);
-  // printf("smem: parent smem_owner=%d\n", mp->shared_mem_owner);
-
-  // printf("smem: post\n");
 
   return 0;
 }

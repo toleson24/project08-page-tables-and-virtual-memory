@@ -116,5 +116,5 @@ sys_smem(void) {
 
   argaddr(0, (uint64 *) &addr);
   argint(1, &n);
-  return smem(addr, n); // (char *) 0x40000000, 4096
+  return smem(addr, n); 
 }
