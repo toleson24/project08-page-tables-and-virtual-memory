@@ -110,13 +110,13 @@ In this example, the child can write to the inherited shared memory region and u
 
 To get the `smem()` system call to work properly you will have to consider several issues:
 
-In `proc.c:smem()` you need to check if both `addr` and `n` are multiplies of 4096. Return -1 if not.
-In `proc.c:smem()` you need to use `kalloc()` to allocate n / 4096 pages.
-In `proc.c:smem()` you need to use `mappages()` to map the allocated kernel pages starting at user virtual address `addr`.
-Hint: look at `proc.c:growproc()` which calls `vm.c:uvmalloc()`. Understanding this code is key to understanding how to use `kalloc()` and `mappages()` in your `smem()` implementation.
-In `proc.c:smem()` you need to update the calling (parent) proc struct with `addr`, `n`, and also record the owning pid of the shared memory region (the owner is the caller of `smem()`).
-In `proc.c:fork()` you will need to properly inherit the shared memory region in the child. In this case you need to create mappings in the child’s page table that point to the kernel pages originally allocated for the shared memory region in the parent. Hint: look at `vm.c:uvmcopy()` for guidance on how to do this (note: `uvmcopy()` won’t work for this directly, why?).
-In `proc.c:freeproc()` you need to handle two cases if the proc has a shared memory region. If the proc is the owner of the region, then you need to unmap the shared memory region and deallocate the kernel pages. If the proc is not the owner, then you need to just unmap the shared memory region. You will need to understand how to use `vm:uvmunmap()`.
+In `proc.c:smem()` you need to check if both `addr` and `n` are multiplies of 4096. Return -1 if not.  
+In `proc.c:smem()` you need to use `kalloc()` to allocate n / 4096 pages.  
+In `proc.c:smem()` you need to use `mappages()` to map the allocated kernel pages starting at user virtual address `addr`.  
+Hint: look at `proc.c:growproc()` which calls `vm.c:uvmalloc()`. Understanding this code is key to understanding how to use `kalloc()` and `mappages()` in your `smem()` implementation.  
+In `proc.c:smem()` you need to update the calling (parent) proc struct with `addr`, `n`, and also record the owning pid of the shared memory region (the owner is the caller of `smem()`).  
+In `proc.c:fork()` you will need to properly inherit the shared memory region in the child. In this case you need to create mappings in the child’s page table that point to the kernel pages originally allocated for the shared memory region in the parent. Hint: look at `vm.c:uvmcopy()` for guidance on how to do this (note: `uvmcopy()` won’t work for this directly, why?).  
+In `proc.c:freeproc()` you need to handle two cases if the proc has a shared memory region. If the proc is the owner of the region, then you need to unmap the shared memory region and deallocate the kernel pages. If the proc is not the owner, then you need to just unmap the shared memory region. You will need to understand how to use `vm:uvmunmap()`.  
 
 ## Testing
 
