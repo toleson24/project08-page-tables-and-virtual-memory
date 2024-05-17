@@ -35,7 +35,7 @@ RISC-V xv6 GitHub repo: https://github.com/mit-pdos/xv6-riscv
 
 ### Project Resources
 
-Tests: https://github.com/USF-CS631-S24/tests/lab06 
+Tests: https://github.com/USF-CS631-S24/tests/tree/main/project08
 
 Autograder: https://github.com/phpeterson-usf/autograder
 
