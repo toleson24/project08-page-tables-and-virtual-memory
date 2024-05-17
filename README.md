@@ -84,6 +84,16 @@ In `proc.c:freeproc()` you need to handle two cases if the proc has a shared mem
 
 ## Links
 
+Tests: https://github.com/USF-CS631-S24/tests/lab06 
+
+Autograder: https://github.com/phpeterson-usf/autograder
+
 ## Testing
 
 ### Autograder
+
+To test this this implementation of `smem()` system call, clone the [Autograder](https://github.com/phpeterson-usf/autograder). From this repository's directory, run
+
+```bash
+grade test
+```
